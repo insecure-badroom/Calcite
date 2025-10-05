@@ -3,31 +3,236 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tide</title>
+  <title>Calcite</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
   <link rel="stylesheet" href="assets/css/style.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.015) 50%, transparent 100%),
+        linear-gradient(240deg, transparent 0%, rgba(255,255,255,0.015) 50%, transparent 100%);
+      background-size: 400% 400%;
+    }
+
+    body::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at 20% 30%, rgba(255,255,255,0.01) 0%, transparent 40%),
+                  radial-gradient(ellipse at 80% 70%, rgba(255,255,255,0.01) 0%, transparent 40%);
+      pointer-events: none;
+    }
+
+    #mainContent {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 1400px;
+      padding: 20px;
+    }
+
+    .loader {
+      text-align: center;
+      color: #fff;
+      font-size: 24px;
+    }
+
+    .container {
+      text-align: center;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .title {
+      font-size: 64px;
+      font-weight: 300;
+      margin-bottom: 50px;
+      color: #ffffff;
+      letter-spacing: 8px;
+      text-transform: uppercase;
+    }
+
+    .dot {
+      color: #666;
+    }
+
+    #searchForm {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    #urlInput {
+      padding: 18px 24px;
+      font-size: 16px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+      color: #fff;
+      transition: all 0.3s ease;
+    }
+
+    #urlInput:focus {
+      outline: none;
+      border-color: rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.08);
+    }
+
+    #urlInput::placeholder {
+      color: #666;
+    }
+
+    .options {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .options label {
+      color: #999;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: color 0.3s ease;
+      font-weight: 300;
+    }
+
+    .options label:hover {
+      color: #fff;
+    }
+
+    .options input[type="checkbox"] {
+      cursor: pointer;
+      width: 16px;
+      height: 16px;
+    }
+
+    button[type="submit"] {
+      padding: 16px 40px;
+      font-size: 16px;
+      font-weight: 300;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      letter-spacing: 2px;
+    }
+
+    button[type="submit"]:hover {
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.3);
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 50%;
+      right: 30px;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .sidebar button {
+      width: 48px;
+      height: 48px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sidebar button:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.25);
+    }
+
+    .sidebar-info {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 11px;
+      color: #666;
+      text-align: center;
+      font-weight: 300;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 40px 20px;
+      }
+
+      .title {
+        font-size: 42px;
+        letter-spacing: 4px;
+      }
+
+      .sidebar {
+        right: 15px;
+      }
+
+      .sidebar button {
+        width: 42px;
+        height: 42px;
+        font-size: 18px;
+      }
+    }
+  </style>
 </head>
 <body>
-  <div class="bubbles">
-    <div></div><div></div><div></div><div></div><div></div>
-  </div>
-
   <div id="mainContent">
     <div id="loader" class="loader" style="display:none;">Loading...</div>
-
     <div class="container" id="content">
-      <h1 class="title">Tide<span class="dot">.</span></h1>
-
+      <h1 class="title">Calcite<span class="dot">.</span></h1>
       <form id="searchForm">
-        <input type="text" id="urlInput" placeholder="Surf the Web..." autocomplete="off" />
+        <input type="text" id="urlInput" placeholder="Search or enter URL..." autocomplete="off" />
         <div class="options">
           <label><input type="checkbox" id="blankMode" /> Stealth (about:blank)</label>
         </div>
-        <button type="submit">Surf 🌊</button>
+        <button type="submit">GO</button>
       </form>
     </div>
-
     <div class="sidebar">
       <button onclick="window.location.href='games.html';"><i class="bi bi-joystick"></i></button>
       <button onclick="window.location.href='movies.html';"><i class="bi bi-film"></i></button>
@@ -39,25 +244,18 @@
         <span id="time">⌚</span>
       </div>
     </div>
-
-    <div class="footer">Tide | By Mizzery</div>
   </div>
-
   <script src="/active/uv/uv.bundle.js" defer></script>
   <script src="/active/uv/uv.config.js" defer></script>
   <script src="/assets/js/register.js" defer></script>
   <script src="/assets/js/index.js" defer></script>
   <script>
-    // Removed password modal code completely
-
     window.onload = function() {
-      // Show main content immediately
       const loader = document.getElementById('loader');
       const content = document.getElementById('content');
       loader.style.display = 'none';
       content.style.display = 'block';
-
-      // Battery status
+      
       if (navigator.getBattery) {
         navigator.getBattery().then(battery => {
           function updateBattery() {
@@ -67,8 +265,7 @@
           battery.addEventListener("levelchange", updateBattery);
         });
       }
-
-      // Time update every second
+      
       function updateTime() {
         const now = new Date();
         document.getElementById("time").textContent = now.toLocaleTimeString();
