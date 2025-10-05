@@ -53,9 +53,16 @@
       position: relative;
       z-index: 1;
       width: 100%;
-      height: 100vh;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
+    }
+
+    #tabsContainer {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
 
     .loader {
