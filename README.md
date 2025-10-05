@@ -5,5 +5,6 @@
 - idk add settings or smth
 - fix cloak
 # alt links
-[netlify](https://calcite.netlify.app)
-[vercel](https://calcite.vercel.app)
+> [netlify](https://calcite.netlify.app)
+> [vercel](https://calcite.vercel.app)
+
