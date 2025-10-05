@@ -3,6 +3,7 @@
 # TODO
 - fix back and forward arrows 
 - fix cloak
+- fix no loading screen appearing
 - remove goofy sidebar
 - idk add settings or smth
 
