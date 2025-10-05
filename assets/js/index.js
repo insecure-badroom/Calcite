@@ -52,7 +52,7 @@ function runStealthMode(url) {
     </html>
   `);
   popup.document.close();
-  window.location.href = "https://www.infinitecampus.org";
+  window.location.href = "https://www.google.com";
   return true;
 }
 
@@ -64,7 +64,8 @@ function createTab() {
     title: 'New Tab',
     url: null,
     history: [],
-    historyIndex: -1
+    historyIndex: -1,
+    stealthMode: false
   };
   tabs.push(tab);
 
@@ -117,6 +118,14 @@ function createTab() {
   
   document.getElementById('tabsContainer').appendChild(tabContent);
 
+  // Add event listener for stealth mode checkbox
+  const checkbox = tabContent.querySelector('.blank-mode');
+  if (checkbox) {
+    checkbox.addEventListener('change', function() {
+      tab.stealthMode = checkbox.checked;
+    });
+  }
+
   switchTab(tabId);
   return tabId;
 }
@@ -162,11 +171,11 @@ function handleSearch(event, tabId) {
   if (!query) return;
   
   const rawUrl = generateSearchUrl(query);
-  const encoded = __uv$config.encodeUrl(rawUrl);
-  const proxyUrl = __uv$config.prefix + encoded;
   
   // Check if stealth mode is enabled
-  if (blankModeCheckbox.checked) {
+  if (blankModeCheckbox && blankModeCheckbox.checked) {
+    const encoded = __uv$config.encodeUrl(rawUrl);
+    const proxyUrl = __uv$config.prefix + encoded;
     runStealthMode(proxyUrl);
   } else {
     navigateToUrl(tabId, rawUrl);
