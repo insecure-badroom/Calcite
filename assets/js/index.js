@@ -1,11 +1,31 @@
-function runStealthMode() {
+// Tab management
+let tabs = [];
+let activeTabId = null;
+let tabIdCounter = 0;
+let stealthModeEnabled = false;
+
+// Generate proper URL from search query or URL input
+function generateSearchUrl(query) {
+  try {
+    const url = new URL(query);
+    return url.toString();
+  } catch {
+    try {
+      const url = new URL(`https://${query}`);
+      if (url.hostname.includes('.')) return url.toString();
+    } catch {}
+  }
+  return `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
+}
+
+// Stealth mode - opens in about:blank popup
+function runStealthMode(url) {
   const title = "Google";
   const icon = "https://www.google.com/favicon.ico";
-  const src = window.location.href;
   const popup = window.open("about:blank", "_blank");
   if (!popup || popup.closed) {
     alert("Popup blocked. Please allow popups for stealth mode to work.");
-    return;
+    return false;
   }
   popup.document.write(`
     <html>
@@ -27,36 +47,312 @@ function runStealthMode() {
         </style>
       </head>
       <body>
-        <iframe src="${src}"></iframe>
+        <iframe src="${url}"></iframe>
       </body>
     </html>
   `);
   popup.document.close();
-  window.location.href = "https://www.google.com";
+  window.location.href = "https://www.infinitecampus.org";
+  return true;
 }
 
-// Store stealth mode state in memory
-let stealthModeEnabled = false;
+// Create a new tab
+function createTab() {
+  const tabId = tabIdCounter++;
+  const tab = {
+    id: tabId,
+    title: 'New Tab',
+    url: null,
+    history: [],
+    historyIndex: -1
+  };
+  tabs.push(tab);
 
-window.onload = function () {
-  document.getElementById('loader').style.display = 'none';
-  document.getElementById('content').style.display = 'block';
+  // Create tab button
+  const tabBtn = document.createElement('div');
+  tabBtn.className = 'tab';
+  tabBtn.dataset.tabId = tabId;
+  tabBtn.innerHTML = `
+    <span class="tab-title">New Tab</span>
+    <button class="tab-close" onclick="closeTab(${tabId}, event)">×</button>
+  `;
+  tabBtn.onclick = (e) => {
+    if (!e.target.classList.contains('tab-close')) {
+      switchTab(tabId);
+    }
+  };
   
-  const checkbox = document.getElementById("blankMode");
-  checkbox.checked = stealthModeEnabled;
-  
-  if (stealthModeEnabled) runStealthMode();
-  
-  checkbox.addEventListener("change", function () {
-    stealthModeEnabled = checkbox.checked;
-    if (stealthModeEnabled) runStealthMode();
-  });
+  document.getElementById('tabBar').insertBefore(tabBtn, document.getElementById('newTabBtn'));
 
+  // Create tab content
+  const tabContent = document.createElement('div');
+  tabContent.className = 'tab-content';
+  tabContent.dataset.tabId = tabId;
+  tabContent.innerHTML = `
+    <div class="home-view">
+      <div class="container">
+        <h1 class="title">Calcite<span class="dot">.</span></h1>
+        <form class="search-form" onsubmit="handleSearch(event, ${tabId})">
+          <input type="text" class="url-input" placeholder="Search or enter URL..." autocomplete="off" />
+          <div class="options">
+            <label><input type="checkbox" class="blank-mode" /> Stealth (about:blank)</label>
+          </div>
+          <button type="submit" class="submit-btn">GO</button>
+        </form>
+      </div>
+    </div>
+    <div class="browser-view">
+      <div class="browser-bar">
+        <div class="browser-controls">
+          <button onclick="goBack(${tabId})" title="Back"><i class="bi bi-arrow-left"></i></button>
+          <button onclick="goForward(${tabId})" title="Forward"><i class="bi bi-arrow-right"></i></button>
+          <button onclick="reload(${tabId})" title="Reload"><i class="bi bi-arrow-clockwise"></i></button>
+          <button onclick="goHome(${tabId})" title="Home"><i class="bi bi-house"></i></button>
+        </div>
+        <input type="text" class="browser-url" placeholder="Enter URL..." onkeypress="handleUrlBarEnter(event, ${tabId})" />
+      </div>
+      <iframe class="browser-iframe"></iframe>
+    </div>
+  `;
+  
+  document.getElementById('tabsContainer').appendChild(tabContent);
+
+  switchTab(tabId);
+  return tabId;
+}
+
+// Close a tab
+function closeTab(tabId, event) {
+  if (event) event.stopPropagation();
+  
+  if (tabs.length === 1) return; // Don't close last tab
+  
+  const tabIndex = tabs.findIndex(t => t.id === tabId);
+  tabs.splice(tabIndex, 1);
+  
+  document.querySelector(`.tab[data-tab-id="${tabId}"]`).remove();
+  document.querySelector(`.tab-content[data-tab-id="${tabId}"]`).remove();
+  
+  if (activeTabId === tabId) {
+    const newActiveTab = tabs[Math.min(tabIndex, tabs.length - 1)];
+    switchTab(newActiveTab.id);
+  }
+}
+
+// Switch to a different tab
+function switchTab(tabId) {
+  activeTabId = tabId;
+  
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  
+  document.querySelector(`.tab[data-tab-id="${tabId}"]`).classList.add('active');
+  document.querySelector(`.tab-content[data-tab-id="${tabId}"]`).classList.add('active');
+}
+
+// Handle search form submission
+function handleSearch(event, tabId) {
+  event.preventDefault();
+  const tab = tabs.find(t => t.id === tabId);
+  const tabContent = document.querySelector(`.tab-content[data-tab-id="${tabId}"]`);
+  const input = tabContent.querySelector('.url-input');
+  const blankModeCheckbox = tabContent.querySelector('.blank-mode');
+  const query = input.value.trim();
+  
+  if (!query) return;
+  
+  const rawUrl = generateSearchUrl(query);
+  const encoded = __uv$config.encodeUrl(rawUrl);
+  const proxyUrl = __uv$config.prefix + encoded;
+  
+  // Check if stealth mode is enabled
+  if (blankModeCheckbox.checked) {
+    runStealthMode(proxyUrl);
+  } else {
+    navigateToUrl(tabId, rawUrl);
+  }
+}
+
+// Navigate to a URL in a tab
+function navigateToUrl(tabId, rawUrl) {
+  const tab = tabs.find(t => t.id === tabId);
+  const tabContent = document.querySelector(`.tab-content[data-tab-id="${tabId}"]`);
+  const tabBtn = document.querySelector(`.tab[data-tab-id="${tabId}"]`);
+  
+  const encoded = __uv$config.encodeUrl(rawUrl);
+  const proxyUrl = __uv$config.prefix + encoded;
+  
+  // Update history
+  if (tab.historyIndex < tab.history.length - 1) {
+    tab.history = tab.history.slice(0, tab.historyIndex + 1);
+  }
+  tab.history.push({ proxy: proxyUrl, original: rawUrl });
+  tab.historyIndex = tab.history.length - 1;
+  tab.url = proxyUrl;
+  
+  // Update UI
+  const homeView = tabContent.querySelector('.home-view');
+  const browserView = tabContent.querySelector('.browser-view');
+  const iframe = tabContent.querySelector('.browser-iframe');
+  const urlBar = tabContent.querySelector('.browser-url');
+  
+  homeView.style.display = 'none';
+  browserView.classList.add('active');
+  
+  // Show loader
+  const loader = document.getElementById('loader');
+  if (loader) loader.style.display = 'block';
+  
+  iframe.src = proxyUrl;
+  urlBar.value = rawUrl;
+  
+  // Hide loader when iframe loads
+  iframe.onload = function() {
+    if (loader) loader.style.display = 'none';
+  };
+  
+  // Update tab title
+  try {
+    const urlObj = new URL(rawUrl);
+    const title = urlObj.hostname || 'New Tab';
+    tab.title = title;
+    tabBtn.querySelector('.tab-title').textContent = title;
+  } catch {
+    const title = rawUrl.length > 20 ? rawUrl.substring(0, 20) + '...' : rawUrl;
+    tab.title = title;
+    tabBtn.querySelector('.tab-title').textContent = title;
+  }
+}
+
+// Handle Enter key in URL bar
+function handleUrlBarEnter(event, tabId) {
+  if (event.key === 'Enter') {
+    const tabContent = document.querySelector(`.tab-content[data-tab-id="${tabId}"]`);
+    const urlBar = tabContent.querySelector('.browser-url');
+    const query = urlBar.value.trim();
+    if (query) {
+      const rawUrl = generateSearchUrl(query);
+      navigateToUrl(tabId, rawUrl);
+    }
+  }
+}
+
+// Go back in history
+function goBack(tabId) {
+  const tab = tabs.find(t => t.id === tabId);
+  if (tab.historyIndex > 0) {
+    tab.historyIndex--;
+    const tabContent = document.querySelector(`.tab-content[data-tab-id="${tabId}"]`);
+    const iframe = tabContent.querySelector('.browser-iframe');
+    const urlBar = tabContent.querySelector('.browser-url');
+    
+    const historyEntry = tab.history[tab.historyIndex];
+    iframe.src = historyEntry.proxy;
+    urlBar.value = historyEntry.original;
+    
+    // Update tab title
+    const tabBtn = document.querySelector(`.tab[data-tab-id="${tabId}"]`);
+    try {
+      const urlObj = new URL(historyEntry.original);
+      const title = urlObj.hostname || 'New Tab';
+      tab.title = title;
+      tabBtn.querySelector('.tab-title').textContent = title;
+    } catch {
+      const title = historyEntry.original.length > 20 ? historyEntry.original.substring(0, 20) + '...' : historyEntry.original;
+      tab.title = title;
+      tabBtn.querySelector('.tab-title').textContent = title;
+    }
+  }
+}
+
+// Go forward in history
+function goForward(tabId) {
+  const tab = tabs.find(t => t.id === tabId);
+  if (tab.historyIndex < tab.history.length - 1) {
+    tab.historyIndex++;
+    const tabContent = document.querySelector(`.tab-content[data-tab-id="${tabId}"]`);
+    const iframe = tabContent.querySelector('.browser-iframe');
+    const urlBar = tabContent.querySelector('.browser-url');
+    
+    const historyEntry = tab.history[tab.historyIndex];
+    iframe.src = historyEntry.proxy;
+    urlBar.value = historyEntry.original;
+    
+    // Update tab title
+    const tabBtn = document.querySelector(`.tab[data-tab-id="${tabId}"]`);
+    try {
+      const urlObj = new URL(historyEntry.original);
+      const title = urlObj.hostname || 'New Tab';
+      tab.title = title;
+      tabBtn.querySelector('.tab-title').textContent = title;
+    } catch {
+      const title = historyEntry.original.length > 20 ? historyEntry.original.substring(0, 20) + '...' : historyEntry.original;
+      tab.title = title;
+      tabBtn.querySelector('.tab-title').textContent = title;
+    }
+  }
+}
+
+// Reload current page
+function reload(tabId) {
+  const tab = tabs.find(t => t.id === tabId);
+  const tabContent = document.querySelector(`.tab-content[data-tab-id="${tabId}"]`);
+  const iframe = tabContent.querySelector('.browser-iframe');
+  
+  // Show loader
+  const loader = document.getElementById('loader');
+  if (loader) loader.style.display = 'block';
+  
+  iframe.src = iframe.src;
+  
+  // Hide loader when iframe loads
+  iframe.onload = function() {
+    if (loader) loader.style.display = 'none';
+  };
+}
+
+// Go to home page
+function goHome(tabId) {
+  const tab = tabs.find(t => t.id === tabId);
+  const tabContent = document.querySelector(`.tab-content[data-tab-id="${tabId}"]`);
+  const tabBtn = document.querySelector(`.tab[data-tab-id="${tabId}"]`);
+  const homeView = tabContent.querySelector('.home-view');
+  const browserView = tabContent.querySelector('.browser-view');
+  
+  homeView.style.display = 'flex';
+  browserView.classList.remove('active');
+  
+  // Reset tab title
+  tab.title = 'New Tab';
+  tabBtn.querySelector('.tab-title').textContent = 'New Tab';
+  
+  // Clear input
+  const input = tabContent.querySelector('.url-input');
+  if (input) input.value = '';
+}
+
+// Initialize on page load
+window.onload = function() {
+  const loader = document.getElementById('loader');
+  if (loader) loader.style.display = 'none';
+  
+  // Create first tab
+  createTab();
+  
+  // New tab button
+  const newTabBtn = document.getElementById('newTabBtn');
+  if (newTabBtn) {
+    newTabBtn.onclick = () => createTab();
+  }
+  
   // Battery status
   if (navigator.getBattery) {
     navigator.getBattery().then(battery => {
       function updateBattery() {
-        document.getElementById("battery").textContent = `${Math.round(battery.level * 100)}% ⚡`;
+        const batteryEl = document.getElementById("battery");
+        if (batteryEl) {
+          batteryEl.textContent = `${Math.round(battery.level * 100)}% ⚡`;
+        }
       }
       updateBattery();
       battery.addEventListener("levelchange", updateBattery);
@@ -65,50 +361,33 @@ window.onload = function () {
   
   // Time update
   function updateTime() {
-    const now = new Date();
-    document.getElementById("time").textContent = now.toLocaleTimeString();
+    const timeEl = document.getElementById("time");
+    if (timeEl) {
+      const now = new Date();
+      timeEl.textContent = now.toLocaleTimeString();
+    }
   }
   setInterval(updateTime, 1000);
   updateTime();
 };
 
-document.querySelectorAll('a').forEach(function (link) {
-  link.addEventListener('click', function () {
-    var gameName = link.textContent;
-    console.log("Loading " + gameName + "...");
-    document.getElementById('loader').style.display = 'block';
-    document.getElementById('content').style.display = 'none';
-    var iframe = document.getElementById('gameFrame');
-    if (iframe) {
-      iframe.onload = function () {
-        document.getElementById('loader').style.display = 'none';
-        document.getElementById('content').style.display = 'block';
-      };
-    }
+// Handle links (for games, apps pages, etc.)
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('a').forEach(function (link) {
+    link.addEventListener('click', function () {
+      var linkText = link.textContent;
+      console.log("Loading " + linkText + "...");
+      const loader = document.getElementById('loader');
+      const content = document.getElementById('content');
+      if (loader) loader.style.display = 'block';
+      if (content) content.style.display = 'none';
+      var iframe = document.getElementById('gameFrame');
+      if (iframe) {
+        iframe.onload = function () {
+          if (loader) loader.style.display = 'none';
+          if (content) content.style.display = 'block';
+        };
+      }
+    });
   });
 });
-
-document.getElementById('searchForm').addEventListener('submit', async function (e) {
-  e.preventDefault();
-  let query = document.getElementById('urlInput').value.trim();
-  if (!query) return;
-  const rawUrl = generateSearchUrl(query);
-  const encoded = __uv$config.encodeUrl(rawUrl);
-  const proxyUrl = __uv$config.prefix + encoded;
-  document.getElementById('loader').style.display = 'block';
-  document.getElementById('content').style.display = 'none';
-  window.location.href = proxyUrl;
-});
-
-function generateSearchUrl(query) {
-  try {
-    const url = new URL(query);
-    return url.toString();
-  } catch {
-    try {
-      const url = new URL(`https://${query}`);
-      if (url.hostname.includes('.')) return url.toString();
-    } catch {}
-  }
-  return `https://duckduckgo.com/search?q=${encodeURIComponent(query)}&source=web`;
-}
