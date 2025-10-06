@@ -245,28 +245,39 @@ function navigateToUrl(tabId, rawUrl) {
   homeView.style.display = 'none';
   browserView.classList.add('active');
   
-  // Show loader
+  // Show loader - IMPORTANT: Set display to flex!
   const loader = document.getElementById('loader');
   if (loader) {
     loader.style.display = 'flex';
+    console.log('Loader shown'); // Debug
+  } else {
+    console.log('Loader element not found!'); // Debug
   }
   
+  // Set iframe src
   iframe.src = proxyUrl;
   urlBar.value = rawUrl;
   
+  // Create a timeout to hide loader
+  let loaderHidden = false;
+  
   // Hide loader when iframe loads
   iframe.onload = function() {
-    if (loader) {
+    if (!loaderHidden && loader) {
       loader.style.display = 'none';
+      loaderHidden = true;
+      console.log('Loader hidden (onload)'); // Debug
     }
   };
   
-  // Fallback: hide loader after 10 seconds if onload doesn't fire
+  // Fallback: hide loader after 5 seconds
   setTimeout(() => {
-    if (loader) {
+    if (!loaderHidden && loader) {
       loader.style.display = 'none';
+      loaderHidden = true;
+      console.log('Loader hidden (timeout)'); // Debug
     }
-  }, 10000);
+  }, 5000);
   
   // Update tab title
   try {
